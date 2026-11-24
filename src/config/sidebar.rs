@@ -12,6 +12,10 @@ const MAX_SIDEBAR_ROWS: usize = 16;
 const MAX_SIDEBAR_TOKENS_PER_ROW: usize = 16;
 const DEFAULT_SIDEBAR_ROW_GAP: u16 = 0;
 
+fn default_true() -> bool {
+    true
+}
+
 fn deserialize_sidebar_rows<'de, D, T>(deserializer: D) -> Result<Vec<Vec<T>>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -427,6 +431,8 @@ pub struct AgentsSidebarConfig {
     #[serde(default, deserialize_with = "deserialize_rows_by_agent")]
     pub rows_by_agent: BTreeMap<String, AgentSidebarRows>,
     pub row_gap: u16,
+    pub group_gap: u16,
+    pub highlight_workspace: bool,
 }
 
 impl AgentsSidebarConfig {
@@ -451,6 +457,8 @@ impl Default for AgentsSidebarConfig {
             ],
             rows_by_agent: BTreeMap::new(),
             row_gap: DEFAULT_SIDEBAR_ROW_GAP,
+            group_gap: DEFAULT_SIDEBAR_ROW_GAP,
+            highlight_workspace: false,
         }
     }
 }
@@ -461,6 +469,8 @@ pub struct SpacesSidebarConfig {
     #[serde(deserialize_with = "deserialize_sidebar_rows")]
     pub rows: SpaceSidebarRows,
     pub row_gap: u16,
+    #[serde(default = "default_true")]
+    pub show_footer_buttons: bool,
 }
 
 impl Default for SpacesSidebarConfig {
@@ -471,6 +481,7 @@ impl Default for SpacesSidebarConfig {
                 vec![SpaceSidebarToken::Branch, SpaceSidebarToken::GitStatus],
             ],
             row_gap: DEFAULT_SIDEBAR_ROW_GAP,
+            show_footer_buttons: true,
         }
     }
 }

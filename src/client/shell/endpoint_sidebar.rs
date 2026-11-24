@@ -517,7 +517,7 @@ pub(super) fn render_expanded(
     }
 
     let footer_y = workspace_area.bottom().saturating_sub(1);
-    if config.mouse_capture {
+    if config.mouse_capture && config.spaces.show_footer_buttons {
         let label = format!(" new · {}", active_endpoint_label(state));
         hits.new_workspace = Rect::new(
             workspace_area.x,

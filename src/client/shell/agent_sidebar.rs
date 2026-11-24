@@ -12,8 +12,10 @@ use super::*;
 
 pub(super) struct AgentRow {
     pub(super) pane_id: String,
+    pub(super) workspace_id: String,
     pub(super) status: crate::api::schema::AgentStatus,
     pub(super) focused: bool,
+    pub(super) workspace_focused: bool,
     pub(super) rows: Vec<Vec<crate::ui::ResolvedToken>>,
 }
 
@@ -80,6 +82,13 @@ pub(super) fn render_agent_panel(
         agent_scroll,
         hits,
         |row| row.rows.len(),
+        |row, next| {
+            if row.workspace_id != next.workspace_id {
+                config.agents.row_gap.max(config.agents.group_gap)
+            } else {
+                config.agents.row_gap
+            }
+        },
         |buffer, rect, row, hits| {
             hits.agents.push((rect, row.pane_id.clone()));
             render_agent_row(buffer, rect, row, config);
@@ -160,6 +169,7 @@ pub(super) fn render_agent_list<T>(
     agent_scroll: &mut usize,
     hits: &mut ShellHitMap,
     row_lines: impl Fn(&T) -> usize,
+    gap_between: impl Fn(&T, &T) -> u16,
     mut render_row: impl FnMut(&mut Buffer, Rect, &T, &mut ShellHitMap),
 ) {
     let body = Rect::new(
@@ -193,13 +203,7 @@ pub(super) fn render_agent_list<T>(
     let gaps = rows
         .iter()
         .enumerate()
-        .map(|(index, _)| {
-            if index + 1 < rows.len() {
-                config.agents.row_gap
-            } else {
-                0
-            }
-        })
+        .map(|(index, row)| rows.get(index + 1).map_or(0, |next| gap_between(row, next)))
         .collect::<Vec<_>>();
     let metrics =
         super::scroll::list_scroll_metrics(&row_heights, &gaps, body.height, *agent_scroll);
@@ -218,13 +222,7 @@ pub(super) fn render_agent_list<T>(
         }
         let rect = Rect::new(body.x, y, content_width, height);
         render_row(buffer, rect, row, hits);
-        y = y
-            .saturating_add(height)
-            .saturating_add(if index + 1 < rows.len() {
-                config.agents.row_gap
-            } else {
-                0
-            });
+        y = y.saturating_add(height).saturating_add(gaps[index]);
     }
 
     if show_scrollbar {
@@ -310,10 +308,16 @@ pub(super) fn agent_row(
         },
         state_text,
     );
+    let workspace_focused = snapshot
+        .agents
+        .iter()
+        .any(|candidate| candidate.focused && candidate.workspace_id == agent.workspace_id);
     Some(AgentRow {
         pane_id: agent.pane_id.clone(),
+        workspace_id: agent.workspace_id.clone(),
         status: agent.agent_status,
         focused: agent.focused,
+        workspace_focused,
         rows,
     })
 }
@@ -325,7 +329,8 @@ pub(super) fn render_agent_row(
     config: &ClientShellConfig,
 ) {
     let palette = &config.palette;
-    let row_style = if row.focused {
+    let highlighted = row.focused || (config.agents.highlight_workspace && row.workspace_focused);
+    let row_style = if highlighted {
         Style::default().bg(palette.active_row_bg)
     } else {
         Style::default()

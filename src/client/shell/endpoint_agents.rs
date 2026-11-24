@@ -71,6 +71,15 @@ pub(super) fn render_expanded(
         agent_scroll,
         hits,
         |row| row.agent.rows.len(),
+        |row, next| {
+            if row.endpoint_id != next.endpoint_id
+                || row.agent.workspace_id != next.agent.workspace_id
+            {
+                config.agents.row_gap.max(config.agents.group_gap)
+            } else {
+                config.agents.row_gap
+            }
+        },
         |buffer, rect, row, hits| {
             super::agent_sidebar::render_agent_row(buffer, rect, &row.agent, config);
             if row.stale {
@@ -108,10 +117,21 @@ impl ClientShellState {
             .iter()
             .map(|row| row.agent.rows.len().max(1).min(u16::MAX as usize) as u16)
             .collect::<Vec<_>>();
-        let mut gaps = vec![self.config.agents.row_gap; rows.len()];
-        if let Some(last) = gaps.last_mut() {
-            *last = 0;
-        }
+        let gaps = rows
+            .iter()
+            .enumerate()
+            .map(|(index, row)| {
+                rows.get(index + 1).map_or(0, |next| {
+                    if row.endpoint_id != next.endpoint_id
+                        || row.agent.workspace_id != next.agent.workspace_id
+                    {
+                        self.config.agents.row_gap.max(self.config.agents.group_gap)
+                    } else {
+                        self.config.agents.row_gap
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
         self.agent_scroll = super::scroll::list_scroll_start_to_reveal(
             &heights,
             &gaps,
@@ -166,6 +186,7 @@ fn agent_rows(
         let key = (row.endpoint.endpoint_id.clone(), row.agent.pane_id.clone());
         let mut agent = rendered_rows.remove(&key)?;
         agent.focused &= row.endpoint.endpoint_id == active_endpoint_id;
+        agent.workspace_focused &= row.endpoint.endpoint_id == active_endpoint_id;
         Some(EndpointAgentRow {
             endpoint_id: row.endpoint.endpoint_id.clone(),
             machine_label: row.endpoint.label.to_owned(),

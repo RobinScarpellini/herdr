@@ -376,7 +376,7 @@ pub(crate) fn render_sidebar(
     }
 
     let footer_y = workspace_area.bottom().saturating_sub(1);
-    if config.mouse_capture {
+    if config.mouse_capture && config.spaces.show_footer_buttons {
         hits.new_workspace = Rect::new(
             workspace_area.x,
             footer_y,
