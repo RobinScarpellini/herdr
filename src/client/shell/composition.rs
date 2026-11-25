@@ -567,10 +567,18 @@ impl ClientShellState {
             {
                 occlusion.start_popup(geometry.outer);
                 let mut composed = frame.to_ratatui_buffer()?;
+                let trimmed_title = popup.title.trim();
+                let title = if trimmed_title.is_empty() {
+                    String::new()
+                } else if geometry.outer.width as usize >= trimmed_title.chars().count() + 4 {
+                    format!(" {trimmed_title} ")
+                } else {
+                    trimmed_title.to_string()
+                };
                 let block = ratatui::widgets::Block::default()
                     .borders(ratatui::widgets::Borders::ALL)
                     .border_style(ratatui::style::Style::default().fg(self.config.palette.accent))
-                    .title(popup.title.clone())
+                    .title(title)
                     .title_alignment(ratatui::layout::Alignment::Center)
                     .style(ratatui::style::Style::default().bg(self.config.palette.panel_bg));
                 ratatui::widgets::Widget::render(
