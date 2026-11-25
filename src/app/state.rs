@@ -315,6 +315,32 @@ impl Palette {
         }
     }
 
+    /// Darcula — JetBrains dark slate & warm amber/orange palette.
+    pub fn darcula() -> Self {
+        Self {
+            accent_fg: None,
+            accent: Color::Rgb(204, 120, 50), // warm orange
+            panel_bg: Color::Rgb(30, 31, 34),
+            sidebar_bg: Color::Reset,
+            active_row_bg: Color::Rgb(60, 63, 65),
+            selection_bg: Color::Rgb(33, 66, 131),
+            surface0: Color::Rgb(49, 51, 53),
+            surface1: Color::Rgb(60, 63, 65),
+            surface_dim: Color::Rgb(24, 25, 27),
+            overlay0: Color::Rgb(110, 115, 119),
+            overlay1: Color::Rgb(128, 128, 128),
+            text: Color::Rgb(188, 190, 196),
+            subtext0: Color::Rgb(154, 167, 176),
+            mauve: Color::Rgb(152, 118, 170),
+            green: Color::Rgb(106, 135, 89),
+            yellow: Color::Rgb(255, 198, 109),
+            red: Color::Rgb(188, 63, 60),
+            blue: Color::Rgb(104, 151, 187),
+            teal: Color::Rgb(41, 153, 153),
+            peach: Color::Rgb(204, 120, 50),
+        }
+    }
+
     /// Nord — frosty blue palette.
     pub fn nord() -> Self {
         Self {
@@ -636,6 +662,7 @@ impl Palette {
             "tokyo-night" => Some(Self::tokyo_night()),
             "tokyo-night-day" => Some(Self::tokyo_night_day()),
             "dracula" => Some(Self::dracula()),
+            "darcula" => Some(Self::darcula()),
             "nord" => Some(Self::nord()),
             "gruvbox" => Some(Self::gruvbox()),
             "gruvbox-light" => Some(Self::gruvbox_light()),
