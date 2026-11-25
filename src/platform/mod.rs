@@ -579,23 +579,7 @@ mod linux;
 #[cfg(target_os = "linux")]
 pub use linux::*;
 
-#[cfg(target_os = "macos")]
-mod macos;
-#[cfg(target_os = "macos")]
-pub use macos::*;
-
-#[cfg(target_os = "windows")]
-mod windows;
-#[cfg(target_os = "windows")]
-pub use windows::*;
-
-#[cfg(not(windows))]
 pub(crate) use process_cwd as pane_process_cwd;
-
-#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-mod fallback;
-#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-pub use fallback::*;
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub(crate) fn available_pane_shell_from_job(child_pid: u32, job: ForegroundJob) -> Option<String> {

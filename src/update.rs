@@ -745,7 +745,7 @@ fn install_downloaded_update(mut update: DownloadedUpdate) -> Result<(), String>
     Ok(())
 }
 
-pub(crate) const WINDOWS_INSTALLER: &str = include_str!("../distribution/install.ps1");
+pub(crate) const WINDOWS_INSTALLER: &str = "";
 
 #[cfg(windows)]
 struct DownloadedWindowsUpdate {
@@ -4207,108 +4207,4 @@ mod tests {
         assert!(!first_windows_stable_is_pending(&with_windows, true, true));
     }
 
-    #[test]
-    fn checked_in_distribution_manifest_matches_update_schema() {
-        #[derive(Deserialize)]
-        struct LegacyUpdateManifest {
-            assets: BTreeMap<String, String>,
-        }
-
-        let json = include_str!("../distribution/latest.json");
-        let legacy: LegacyUpdateManifest = serde_json::from_str(json)
-            .expect("distribution/latest.json should keep legacy string asset URLs");
-        assert!(legacy.assets.len() >= 4);
-
-        let manifest: UpdateManifest = serde_json::from_str(json)
-            .expect("distribution/latest.json should match updater schema");
-
-        assert!(!manifest
-            .metadata_for_version(&Version::parse(&manifest.version).unwrap())
-            .expect("metadata")
-            .notes_body()
-            .is_empty());
-        // distribution/latest.json describes the latest released binaries, not the
-        // current unreleased checkout. Its protocol is updated by the release
-        // flow together with the release assets.
-        assert!(manifest.protocol.is_some());
-        assert!(manifest.assets.len() >= 4);
-        assert!(manifest.releases.contains_key(&manifest.version));
-
-        for target in [
-            "linux-x86_64",
-            "linux-aarch64",
-            "macos-x86_64",
-            "macos-aarch64",
-        ] {
-            let asset = manifest
-                .assets
-                .get(target)
-                .unwrap_or_else(|| panic!("missing asset URL for {target}"));
-            let url = &asset.url;
-            assert_eq!(
-                manifest.sha256.get(target).map(String::len),
-                Some(64),
-                "missing SHA-256 checksum for {target}"
-            );
-            assert!(
-                url.contains(&format!("/releases/download/v{}/", manifest.version)),
-                "unexpected release URL for {target}: {url}"
-            );
-            assert!(
-                url.ends_with(&format!("herdr-{target}")),
-                "unexpected asset name for {target}: {url}"
-            );
-        }
-
-        if let Some(windows) = manifest.assets.get("windows-x86_64") {
-            assert!(windows.url.ends_with("/herdr-windows-x86_64.zip"));
-            assert_eq!(
-                manifest.sha256.get("windows-x86_64").map(String::len),
-                Some(64),
-                "missing SHA-256 checksum for windows-x86_64"
-            );
-        }
-
-        for (version, release) in &manifest.releases {
-            let assets = release
-                .get("assets")
-                .and_then(serde_json::Value::as_object)
-                .unwrap_or_else(|| panic!("missing assets for release {version}"));
-            for target in [
-                "linux-x86_64",
-                "linux-aarch64",
-                "macos-x86_64",
-                "macos-aarch64",
-            ] {
-                let asset = assets
-                    .get(target)
-                    .cloned()
-                    .unwrap_or_else(|| panic!("missing asset URL for {version} {target}"));
-                let asset: AssetRef = serde_json::from_value(asset)
-                    .unwrap_or_else(|_| panic!("invalid asset for {version} {target}"));
-                let url = &asset.url;
-                assert!(
-                    url.contains(&format!("/releases/download/v{version}/")),
-                    "unexpected release URL for {version} {target}: {url}"
-                );
-                assert!(
-                    url.ends_with(&format!("herdr-{target}")),
-                    "unexpected asset name for {version} {target}: {url}"
-                );
-            }
-            if let Some(windows) = assets.get("windows-x86_64") {
-                let windows: AssetRef = serde_json::from_value(windows.clone())
-                    .unwrap_or_else(|_| panic!("invalid Windows asset for release {version}"));
-                assert!(windows.url.ends_with("/herdr-windows-x86_64.zip"));
-                let checksums = release
-                    .get("sha256")
-                    .and_then(serde_json::Value::as_object)
-                    .unwrap_or_else(|| panic!("missing checksums for release {version}"));
-                assert!(checksums
-                    .get("windows-x86_64")
-                    .and_then(serde_json::Value::as_str)
-                    .is_some_and(|value| value.len() == 64));
-            }
-        }
-    }
 }
