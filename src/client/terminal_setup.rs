@@ -400,6 +400,67 @@ pub(super) fn write_host_color_scheme_report_mode(
     writer.flush()
 }
 
+pub(super) const HOST_TERMINAL_COLOR_RESET_SEQUENCE: &[u8] =
+    b"\x1b]110\x1b\\\x1b]111\x1b\\\x1b]112\x1b\\\x1b]104\x1b\\";
+
+fn color_to_rgb(color: ratatui::style::Color) -> Option<(u8, u8, u8)> {
+    match color {
+        ratatui::style::Color::Rgb(r, g, b) => Some((r, g, b)),
+        _ => None,
+    }
+}
+
+/// Build OSC 10/11/12/4 escape sequences so the host terminal (Kitty, Ghostty,
+/// Alacritty, local or over SSH) dynamically matches the active Herdr theme.
+/// Returns `None` for the `terminal` theme (meaning host defaults should apply).
+pub(super) fn host_theme_osc_sequence(
+    theme_name: &str,
+    palette: &crate::app::state::Palette,
+) -> Option<String> {
+    use std::fmt::Write as _;
+
+    if theme_name == "terminal" {
+        return None;
+    }
+    let bg = color_to_rgb(palette.panel_bg)?;
+    let fg = color_to_rgb(palette.text)?;
+    let cursor = color_to_rgb(palette.accent).unwrap_or(fg);
+
+    let mut out = String::with_capacity(420);
+    let _ = write!(out, "\x1b]10;#{:02x}{:02x}{:02x}\x1b\\", fg.0, fg.1, fg.2);
+    let _ = write!(out, "\x1b]11;#{:02x}{:02x}{:02x}\x1b\\", bg.0, bg.1, bg.2);
+    let _ = write!(
+        out,
+        "\x1b]12;#{:02x}{:02x}{:02x}\x1b\\",
+        cursor.0, cursor.1, cursor.2
+    );
+
+    let ansi = [
+        palette.surface0, // 0: black
+        palette.red,      // 1: red
+        palette.green,    // 2: green
+        palette.yellow,   // 3: yellow
+        palette.blue,     // 4: blue
+        palette.mauve,    // 5: magenta
+        palette.teal,     // 6: cyan
+        palette.subtext0, // 7: white
+        palette.overlay1, // 8: bright black
+        palette.red,      // 9: bright red
+        palette.green,    // 10: bright green
+        palette.yellow,   // 11: bright yellow
+        palette.accent,   // 12: bright blue
+        palette.mauve,    // 13: bright magenta
+        palette.teal,     // 14: bright cyan
+        palette.text,     // 15: bright white
+    ];
+    for (index, color) in ansi.iter().enumerate() {
+        if let Some((r, g, b)) = color_to_rgb(*color) {
+            let _ = write!(out, "\x1b]4;{index};#{r:02x}{g:02x}{b:02x}\x1b\\");
+        }
+    }
+    Some(out)
+}
+
 pub(super) fn write_terminal_restore_postlude(
     writer: &mut impl io::Write,
     reset_host_color_scheme_reports: bool,
@@ -713,6 +774,9 @@ fn restore_terminal_state(
     if !is_ssh_session() {
         let _ = disable_windows_native_mouse_capture();
     }
+
+    let _ = io::stdout().write_all(HOST_TERMINAL_COLOR_RESET_SEQUENCE);
+    let _ = io::stdout().flush();
 
     let restore_result = ratatui::try_restore();
     let postlude_result =

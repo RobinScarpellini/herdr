@@ -1131,6 +1131,10 @@ impl ClientShellState {
         }
     }
 
+    pub(crate) fn active_theme_palette(&self) -> (&str, &crate::app::state::Palette) {
+        (&self.config.theme_name, &self.config.palette)
+    }
+
     pub(super) fn resume_mobile_switcher_if_ready(&mut self) -> bool {
         if !self.mobile_switcher_suspended || self.overlay.is_some() {
             return false;

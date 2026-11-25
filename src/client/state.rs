@@ -79,6 +79,7 @@ pub(super) struct ClientState {
     pub(super) deferred_local_activation: Option<endpoint::EndpointActivationIntent>,
     pub(super) draw_host_cursor: bool,
     pub(super) detached_process_children: Vec<std::process::Child>,
+    pub(super) last_host_theme_osc: Option<String>,
     pub(super) shell: Option<shell::ClientShellState>,
 }
 
@@ -140,6 +141,7 @@ impl ClientState {
             deferred_local_activation: None,
             draw_host_cursor: false,
             detached_process_children: Vec::new(),
+            last_host_theme_osc: None,
             shell: Some(shell::ClientShellState::new(
                 shell::ClientShellConfig::from_config(&crate::config::Config::default()),
             )),
@@ -543,6 +545,34 @@ impl ClientState {
         Ok(())
     }
 
+    fn sync_host_terminal_theme(&mut self, writer: &mut impl io::Write) {
+        let Some(shell) = self.shell.as_ref() else {
+            return;
+        };
+        let (theme_name, palette) = shell.active_theme_palette();
+        let desired = terminal_setup::host_theme_osc_sequence(theme_name, palette);
+        if desired == self.last_host_theme_osc {
+            return;
+        }
+        match &desired {
+            Some(seq) => {
+                if writer.write_all(seq.as_bytes()).is_ok() && writer.flush().is_ok() {
+                    self.last_host_theme_osc = desired;
+                }
+            }
+            None => {
+                if self.last_host_theme_osc.is_some()
+                    && writer
+                        .write_all(terminal_setup::HOST_TERMINAL_COLOR_RESET_SEQUENCE)
+                        .is_ok()
+                    && writer.flush().is_ok()
+                {
+                    self.last_host_theme_osc = None;
+                }
+            }
+        }
+    }
+
     /// Presents and commits a frame only after all terminal output has been written successfully.
     /// Callers which acknowledge presentation-sensitive work use the return value rather than
     /// treating composition as presentation.
@@ -550,7 +580,9 @@ impl ClientState {
         &mut self,
         frame_data: impl Into<frame_output::ComposedFrame>,
     ) -> bool {
-        self.try_present_frame_to(&mut io::stdout(), frame_data)
+        let mut stdout = io::stdout();
+        self.sync_host_terminal_theme(&mut stdout);
+        self.try_present_frame_to(&mut stdout, frame_data)
     }
 
     pub(super) fn try_present_frame_to(

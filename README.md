@@ -6,6 +6,8 @@ Personal Linux-focused fork of [herdrdev/herdr](https://github.com/herdrdev/herd
 - `[ui.sidebar.agents].group_gap`: unhighlighted blank line count between different workspaces while keeping sibling agents in the same workspace flush (`row_gap = 0`).
 - `[ui.sidebar.agents].highlight_workspace`: highlights all agents in the active workspace together when any agent in that workspace is focused.
 - `[ui.sidebar.spaces].show_footer_buttons`: toggles the `new` and `menu` footer labels independently of `mouse_capture`.
+- Built-in `darcula` theme (JetBrains Darcula palette).
+- Dynamic host terminal palette sync (`OSC 10/11/12/4`): automatically adapts Kitty / host terminal background, foreground, cursor, and 16 ANSI colors live whenever the Herdr theme changes (including live preview and SSH), and resets cleanly (`OSC 110/111/112/104`) on detach.
 
 ## Build & install (Linux)
 Requires Rust (see `rust-toolchain.toml`) and Zig `0.16.0` (for vendored `libghostty-vt`).
